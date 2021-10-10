@@ -90,7 +90,7 @@ fn find_text(data: String, find: String) -> String {
                 continue
             }
 
-            formatted_text = format!("{}\n{}:{}", formatted_text, r256::generate_string(&vec![Styles::Bold, Styles::FgColor256(11)], &index.to_string()), got_str)
+            formatted_text = format!("{}\n{}:{}", formatted_text, r256::generate_string(&vec![Styles::Bold, Styles::FgColor256(11)], &(index + 1).to_string()), got_str)
         }
     }
 
