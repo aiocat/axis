@@ -5,6 +5,7 @@ use r256::{Styles};
 fn main() {
     let mut app = Surd::new("axis", "Modern and minimal tool for searching a text in folder.", "Modeminal", "0.1.0");
     app.add_flag("path", "Set the current path.", vec!["p".to_string()]);
+    app.add_flag("wait", "Wait input for the next result.", vec!["w".to_string()]);
     app.set_handler(main_handler);
 
     r256::init();
@@ -17,21 +18,25 @@ fn main_handler(found_flags: &Vec<surd::Flag>, program_args: Vec<String>) {
     }
     
     let mut program_path = &String::from(".");
+    let mut wait_for_another = false;
 
     for flag in found_flags {
         if flag.name == "path" && flag.value != "" {
-            program_path = &flag.value
+            program_path = &flag.value;
+        } else if flag.name == "wait" {
+            wait_for_another = true;
         }
     }
-    handle_path(program_path, program_args);
+
+    handle_path(program_path, program_args, wait_for_another);
 }
 
-fn handle_path(program_path: &String, program_args: Vec<String>) {
+fn handle_path(program_path: &String, program_args: Vec<String>, wait_for_another: bool) {
     match fs::read_dir(program_path) {
         Ok(rd) => {
             for path in rd {
                 match path {
-                    Ok(file) => wrap_file(file, program_args.clone()),
+                    Ok(file) => wrap_file(file, program_args.clone(), wait_for_another),
                     Err(err) => {
                         let err_vec: Vec<Styles> = vec![Styles::Bold, Styles::FgColor256(9)];
                         r256::println(&err_vec, &err.to_string());
@@ -46,13 +51,13 @@ fn handle_path(program_path: &String, program_args: Vec<String>) {
     }
 }
 
-fn wrap_file(file: std::fs::DirEntry, program_args: Vec<String>) {
+fn wrap_file(file: std::fs::DirEntry, program_args: Vec<String>, wait_for_another: bool) {
     match file.metadata() {
         Ok(metadata) => {
             let file_path = file.path().display().to_string();
 
             if metadata.is_dir() {
-                handle_path(&file_path, program_args)
+                handle_path(&file_path, program_args, wait_for_another)
             } else {
                 match fs::read_to_string(&file_path) {
                     Ok(file_data) => {
@@ -64,7 +69,21 @@ fn wrap_file(file: std::fs::DirEntry, program_args: Vec<String>) {
                               r256::generate_string(&vec![Styles::FgColor256(15)], &metadata.len().to_string()),
                               "-".repeat(file_path.len()),
                               printable_str
-                            )
+                            );
+
+                            if wait_for_another {
+                                match clear_input("> ") {
+                                    Ok(input) => {
+                                        if input == "q" {
+                                            std::process::exit(0);
+                                        }
+                                    },
+                                    Err(err) => {
+                                        let err_vec: Vec<Styles> = vec![Styles::Bold, Styles::FgColor256(9)];
+                                        r256::println(&err_vec, &err.to_string());
+                                    }
+                                }
+                            }
                         }
                     },
                     Err(_) => return
@@ -95,4 +114,28 @@ fn find_text(data: String, find: String) -> String {
     }
 
     formatted_text
+}
+
+fn clear_input(input: &str) -> Result<String, std::io::Error> {
+    use std::io::{stdin,stdout,Write};
+
+    print!("{}", input);
+    let _ = stdout().flush();
+
+    let mut input_buffer = String::new();
+
+    match stdin().read_line(&mut input_buffer) {
+        Ok(_) => {
+            if let Some('\n') = input_buffer.chars().next_back() {
+                input_buffer.pop();
+            }
+
+            if let Some('\r') = input_buffer.chars().next_back() {
+                input_buffer.pop();
+            }
+
+            Ok(input_buffer)
+        },
+        Err(err) => Err(err)
+    }
 }
