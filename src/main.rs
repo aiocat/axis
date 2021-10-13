@@ -31,6 +31,7 @@ fn main_handler(found_flags: &Vec<surd::Flag>, program_args: Vec<String>) {
     handle_path(program_path, program_args, wait_for_another);
 }
 
+// Iterate over files and directories in path.
 fn handle_path(program_path: &String, program_args: Vec<String>, wait_for_another: bool) {
     match fs::read_dir(program_path) {
         Ok(rd) => {
@@ -51,14 +52,18 @@ fn handle_path(program_path: &String, program_args: Vec<String>, wait_for_anothe
     }
 }
 
+// Wrap file
 fn wrap_file(file: std::fs::DirEntry, program_args: Vec<String>, wait_for_another: bool) {
+    // Get file metadata for check if it is a directory.
     match file.metadata() {
         Ok(metadata) => {
             let file_path = file.path().display().to_string();
 
             if metadata.is_dir() {
+                // Recursive directory handling.
                 handle_path(&file_path, program_args, wait_for_another)
             } else {
+                // Read file data
                 match fs::read_to_string(&file_path) {
                     Ok(file_data) => {
                         let printable_str = find_text(file_data, program_args.join(" "));
@@ -71,6 +76,7 @@ fn wrap_file(file: std::fs::DirEntry, program_args: Vec<String>, wait_for_anothe
                               printable_str
                             );
 
+                            // Wait an input if --walk is used.
                             if wait_for_another {
                                 match clear_input("> ") {
                                     Ok(input) => {
@@ -97,11 +103,14 @@ fn wrap_file(file: std::fs::DirEntry, program_args: Vec<String>, wait_for_anothe
     }
 }
 
+// Find text from data.
 fn find_text(data: String, find: String) -> String {
     let mut formatted_text = String::new();
 
     for (index, line) in data.lines().enumerate() {
+        // Check if line contains the text.
         if line.contains(&find) {
+            // Replace the text with background-colored version of the text.
             let colored_found_text = r256::generate_string(&vec![Styles::BgColor256(4), Styles::FgColor256(15)], &find);
             let got_str = line.replace(&find, &colored_found_text);
 
@@ -116,6 +125,7 @@ fn find_text(data: String, find: String) -> String {
     formatted_text
 }
 
+// Simple function for take clear input easily. 
 fn clear_input(input: &str) -> Result<String, std::io::Error> {
     use std::io::{stdin,stdout,Write};
 
